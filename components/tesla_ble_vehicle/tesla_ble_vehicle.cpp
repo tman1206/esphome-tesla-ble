@@ -102,6 +102,13 @@ namespace esphome
 
       BLECommand current_command = command_queue_.front();
       uint32_t now = millis();
+      // Reset started_at on first encounter (IDLE state) so COMMAND_TIMEOUT measures from
+      // when the command actually starts executing, not from when it was enqueued.
+      if (current_command.state == BLECommandState::IDLE)
+      {
+        current_command.started_at = now;
+        command_queue_.front() = current_command;
+      }
       // Overall timeout check
       if ((now - current_command.started_at) > COMMAND_TIMEOUT)
       {
@@ -1678,18 +1685,21 @@ if (ble_disconnected_ != BleConnected) // While disconnected update duration of 
       {
         BLECommand current_command = command_queue_.front();
         if ((domain == UniversalMessage_Domain_DOMAIN_VEHICLE_SECURITY) &&
-            (current_command.state == BLECommandState::WAITING_FOR_VCSEC_AUTH_RESPONSE))
+            (current_command.state == BLECommandState::WAITING_FOR_VCSEC_AUTH_RESPONSE ||
+             current_command.state == BLECommandState::WAITING_FOR_VCSEC_AUTH))
         {
           switch (current_command.domain)
           {
           case UniversalMessage_Domain_DOMAIN_VEHICLE_SECURITY:
             ESP_LOGV(TAG, "[%s] VCSEC authenticated, ready to execute", current_command.execute_name.c_str());
             current_command.state = BLECommandState::READY;
+            current_command.last_tx_at = 0; // force immediate execution on next loop
             current_command.retry_count = 0;
             break;
           case UniversalMessage_Domain_DOMAIN_INFOTAINMENT:
             ESP_LOGV(TAG, "[%s] VCSEC authenticated, queuing INFOTAINMENT auth", current_command.execute_name.c_str());
             current_command.state = BLECommandState::WAITING_FOR_INFOTAINMENT_AUTH;
+            current_command.last_tx_at = 0; // force immediate execution on next loop
             current_command.retry_count = 0;
             break;
           case UniversalMessage_Domain_DOMAIN_BROADCAST:
