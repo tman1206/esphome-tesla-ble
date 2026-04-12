@@ -1364,6 +1364,15 @@ if (ble_disconnected_ != BleConnected) // While disconnected update duration of 
         case VCSEC_ClosureMoveRequest_frontDriverDoor_tag:
           closureMoveRequest.frontDriverDoor = moveType;
           break;
+        case VCSEC_ClosureMoveRequest_frontPassengerDoor_tag:
+          closureMoveRequest.frontPassengerDoor = moveType;
+          break;
+        case VCSEC_ClosureMoveRequest_rearDriverDoor_tag:
+          closureMoveRequest.rearDriverDoor = moveType;
+          break;
+        case VCSEC_ClosureMoveRequest_rearPassengerDoor_tag:
+          closureMoveRequest.rearPassengerDoor = moveType;
+          break;
         default:
           ESP_LOGE (TAG, "Unhandled moveWhat requested %d", moveWhat);
           return 1;
