@@ -908,7 +908,41 @@ namespace esphome
 
       case UniversalMessage_Destination_routing_address_tag:
       {
-        ESP_LOGD(TAG, "Received message from routing address");
+        ESP_LOGI(TAG, "Received message from routing address (payload type=%d)", read_queue_message_.which_payload);
+        // The car sends closureMove responses with from_destination = routing_address rather than
+        // a domain, so they bypass the VCSEC domain handler above. Try to parse and complete here.
+        if (!command_queue_.empty())
+        {
+          BLECommand current_command = command_queue_.front();
+          if (current_command.domain == UniversalMessage_Domain_DOMAIN_VEHICLE_SECURITY &&
+              current_command.state == BLECommandState::WAITING_FOR_RESPONSE)
+          {
+            VCSEC_FromVCSECMessage vcsec_message = VCSEC_FromVCSECMessage_init_default;
+            if (tesla_ble_client_->parseFromVCSECMessage(&read_queue_message_.payload.protobuf_message_as_bytes, &vcsec_message) == 0)
+            {
+              switch (vcsec_message.which_sub_message)
+              {
+              case VCSEC_FromVCSECMessage_vehicleStatus_tag:
+                handleVCSECVehicleStatus(vcsec_message.sub_message.vehicleStatus);
+                ESP_LOGI(TAG, "[%s] Received vehicle status (routing addr), command completed", current_command.execute_name.c_str());
+                command_queue_.pop();
+                return;
+              case VCSEC_FromVCSECMessage_commandStatus_tag:
+                log_vcsec_command_status(TAG, &vcsec_message.sub_message.commandStatus);
+                if (vcsec_message.sub_message.commandStatus.operationStatus == VCSEC_OperationStatus_E_OPERATIONSTATUS_OK)
+                {
+                  ESP_LOGI(TAG, "[%s] Received VCSEC OK (routing addr), command completed", current_command.execute_name.c_str());
+                  command_queue_.pop();
+                  return;
+                }
+                break;
+              default:
+                ESP_LOGD(TAG, "[%s] Received VCSEC sub_message %d from routing addr, not completing", current_command.execute_name.c_str(), vcsec_message.which_sub_message);
+                break;
+              }
+            }
+          }
+        }
         break;
       }
       default:
