@@ -2,15 +2,12 @@
 # Requires: client-core.yml
 #
 # Provides:
-#   Sensors: is_asleep, is_user_present, shift_state, odometer,
+#   Sensors: is_user_present, shift_state, odometer,
 #            tpms_pressure_fl/fr/rl/rr
 #   Buttons: btn_wake_up, btn_flash_light, btn_sound_horn
 #   Switch:  sw_sentry_mode
 
 tesla_ble_vehicle:
-  is_asleep:
-    id: "is_asleep"
-    name: "Asleep"
   is_user_present:
     id: "is_user_present"
     name: "User presence"

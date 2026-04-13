@@ -25,6 +25,9 @@ tesla_ble_vehicle:
   fast_poll_if_unlocked: 0
   wake_on_boot: 0
 
+  is_asleep:
+    id: "is_asleep"
+    name: "Asleep"
   last_update:
     id: "last_update"
     name: "Last update"

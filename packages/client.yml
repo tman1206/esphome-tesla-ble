@@ -20,9 +20,6 @@ tesla_ble_vehicle:
   fast_poll_if_unlocked: 0 # if != 0, fast polls are enabled when unlocked
   wake_on_boot: 0 # != 0 wakes car on device boot
 
-  is_asleep:
-    id: "is_asleep"
-    name: "Asleep"
   is_user_present:
     id: "is_user_present"
     name: "User presence"
