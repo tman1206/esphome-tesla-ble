@@ -26,7 +26,8 @@ namespace esphome
     void TeslaBLEVehicle::dump_config()
     {
       ESP_LOGCONFIG(TAG, "Tesla BLE Vehicle:");
-      LOG_BINARY_SENSOR("  ", "Asleep Sensor", binary_sensors_[static_cast<size_t>(BinarySensorId::IsAsleep)]);
+      if (binary_sensors_[static_cast<size_t>(BinarySensorId::IsAsleep)] != nullptr)
+        LOG_BINARY_SENSOR("  ", "Asleep Sensor", binary_sensors_[static_cast<size_t>(BinarySensorId::IsAsleep)]);
     }
     TeslaBLEVehicle::TeslaBLEVehicle() : tesla_ble_client_(new TeslaBLE::Client{})
     {
@@ -124,7 +125,7 @@ namespace esphome
          * If the car is asleep and the command is an Infotainment data request (identified by a "get" in the execute_name
          * field), then ignore the request as we don't want to risk waking the car.
         */
-        if (binary_sensors_[static_cast<size_t>(BinarySensorId::IsAsleep)]->state && (current_command.execute_name.find("get") == 0))
+        if (binary_sensor_state(BinarySensorId::IsAsleep) && (current_command.execute_name.find("get") == 0))
         {
           ESP_LOGI(TAG, "[%s] Car is asleep, don't wake for a 'get' command", current_command.execute_name.c_str());
           command_queue_.pop();
@@ -205,7 +206,7 @@ namespace esphome
       case BLECommandState::WAITING_FOR_INFOTAINMENT_AUTH:
         if (now - current_command.last_tx_at > MAX_LATENCY)
         {
-          if (!binary_sensors_[static_cast<size_t>(BinarySensorId::IsAsleep)]->state == false)
+          if (!binary_sensor_state(BinarySensorId::IsAsleep) == false)
           {
             ESP_LOGW(TAG, "[%s] Car is asleep, initiating wake..", current_command.execute_name.c_str());
             current_command.state = BLECommandState::WAITING_FOR_WAKE;
@@ -270,7 +271,7 @@ namespace esphome
       case BLECommandState::WAITING_FOR_WAKE_RESPONSE:
         if ((now - current_command.last_tx_at) > MAX_LATENCY)
         {
-          if (binary_sensors_[static_cast<size_t>(BinarySensorId::IsAsleep)]->state == false)
+          if (binary_sensor_state(BinarySensorId::IsAsleep) == false)
           {
             if (strcmp(current_command.execute_name.c_str(), "wake vehicle") == 0) {
               ESP_LOGD(TAG, "[%s] Vehicle is awake, command completed", current_command.execute_name.c_str());
@@ -324,8 +325,8 @@ namespace esphome
         *   to respond to the last info request (which is sent after a short delay from sending the (un)lock command), try sending
         *   the (un)lock command again.
         */
-        if (((binary_sensors_[static_cast<size_t>(BinarySensorId::IsUnlocked)]->state == true) and (strcmp(current_command.execute_name.c_str(), "unlock vehicle") == 0)) or
-            ((binary_sensors_[static_cast<size_t>(BinarySensorId::IsUnlocked)]->state == false) and (strcmp(current_command.execute_name.c_str(), "lock vehicle") == 0)))
+        if (((binary_sensor_state(BinarySensorId::IsUnlocked) == true) and (strcmp(current_command.execute_name.c_str(), "unlock vehicle") == 0)) or
+            ((binary_sensor_state(BinarySensorId::IsUnlocked) == false) and (strcmp(current_command.execute_name.c_str(), "lock vehicle") == 0)))
         {
           ESP_LOGI (TAG, "[%s] Vehicle is (un)locked as required so command completed", current_command.execute_name.c_str());
           command_queue_.pop();
@@ -1033,23 +1034,23 @@ if (ble_disconnected_ != BleConnected) // While disconnected update duration of 
           esp32_just_started_++;
         // Beyond 2 this is no longer relevant
         }
-        if (!binary_sensors_[static_cast<size_t>(BinarySensorId::IsAsleep)]->state and previous_asleep_state_) // Remember, true means asleep
+        if (!binary_sensor_state(BinarySensorId::IsAsleep) and previous_asleep_state_) // Remember, true means asleep
         {
           // Car has just woken, also record time it happened so can time out after configured time
           car_just_woken_ = 1;
           car_wake_time_ = millis();
         }
-        if (binary_sensors_[static_cast<size_t>(BinarySensorId::IsAsleep)]->state and !previous_asleep_state_) // Car has just gone to sleep
+        if (binary_sensor_state(BinarySensorId::IsAsleep) and !previous_asleep_state_) // Car has just gone to sleep
         { // Belt & braces clear poll triggers if car is asleep
           car_is_charging_ = NotCharging;
         }
-        previous_asleep_state_ = binary_sensors_[static_cast<size_t>(BinarySensorId::IsAsleep)]->state;
+        previous_asleep_state_ = binary_sensor_state(BinarySensorId::IsAsleep);
 
         ESP_LOGI (TAG, "Reading INFOTAINMENT, previous_asleep_state_=%d, car_just_woken_=%d, car_is_charging_=%d, Unlocked=%d, User=%d, fast_poll_if_unlocked_=%d",
-                  previous_asleep_state_, car_just_woken_, car_is_charging_, binary_sensors_[static_cast<size_t>(BinarySensorId::IsUnlocked)]->state, binary_sensors_[static_cast<size_t>(BinarySensorId::IsUserPresent)]->state, fast_poll_if_unlocked_);
-        
+                  previous_asleep_state_, car_just_woken_, car_is_charging_, binary_sensor_state(BinarySensorId::IsUnlocked), binary_sensor_state(BinarySensorId::IsUserPresent), fast_poll_if_unlocked_);
+
         //if (car_just_woken_ or OneOffUpdate or car_is_charging_ or this->is_unlocked_->state or this->is_user_present_->state)
-        if (one_off_update_ or (binary_sensors_[static_cast<size_t>(BinarySensorId::IsUnlocked)]->state and (fast_poll_if_unlocked_ > 0)) or binary_sensors_[static_cast<size_t>(BinarySensorId::IsUserPresent)]->state)
+        if (one_off_update_ or (binary_sensor_state(BinarySensorId::IsUnlocked) and (fast_poll_if_unlocked_ > 0)) or binary_sensor_state(BinarySensorId::IsUserPresent))
         { // For these fastest poll rate is used
           do_poll_ = true;
         }
@@ -1500,7 +1501,7 @@ if (ble_disconnected_ != BleConnected) // While disconnected update duration of 
     int TeslaBLEVehicle::wakeVehicle()
     {
       ESP_LOGI(TAG, "Waking vehicle");
-      if (binary_sensors_[static_cast<size_t>(BinarySensorId::IsAsleep)]->state == false)
+      if (binary_sensor_state(BinarySensorId::IsAsleep) == false)
       {
         ESP_LOGI(TAG, "Vehicle is already awake");
         return 0;
@@ -2113,7 +2114,7 @@ if (ble_disconnected_ != BleConnected) // While disconnected update duration of 
 
       if (vehicleStatus.vehicleSleepStatus == VCSEC_VehicleSleepStatus_E_VEHICLE_SLEEP_STATUS_AWAKE)
       {
-        if (!binary_sensors_[static_cast<size_t>(BinarySensorId::IsChargeFlapOpen)]->has_state())
+        if (!binary_sensor_has_state(BinarySensorId::IsChargeFlapOpen))
         {
           publishSensor (BinarySensorId::IsChargeFlapOpen, true);
         }

@@ -336,6 +336,16 @@ namespace esphome
             inline void publish_if (T* sensor, const V& value) {
                 if (sensor) sensor->publish_state (value);
             }
+            // Safe state reader — returns default_value when the sensor was not configured.
+            inline bool binary_sensor_state (BinarySensorId id, bool default_value = false) const {
+                auto* s = binary_sensors_[static_cast<size_t>(id)];
+                return s ? s->state : default_value;
+            }
+            inline bool binary_sensor_has_state (BinarySensorId id) const {
+                auto* s = binary_sensors_[static_cast<size_t>(id)];
+                return s && s->has_state();
+            }
+
             inline void publishSensor (BinarySensorId id, bool value) {
                 publish_if (binary_sensors_[static_cast<size_t>(id)], value);
             }
