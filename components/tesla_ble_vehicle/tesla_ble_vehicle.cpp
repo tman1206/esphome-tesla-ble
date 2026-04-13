@@ -614,6 +614,20 @@ namespace esphome
         else
         {
           ESP_LOGI(TAG, "Received success message from domain %s", domain_to_string(read_queue_message_.from_destination.sub_destination.domain));
+          // A signed SUCCESS from VCSEC means the car accepted the command — complete it immediately
+          // rather than waiting for MAX_LATENCY to expire as a timeout.
+          if (!command_queue_.empty())
+          {
+            BLECommand current_command = command_queue_.front();
+            if (current_command.state == BLECommandState::WAITING_FOR_RESPONSE &&
+                current_command.domain == UniversalMessage_Domain_DOMAIN_VEHICLE_SECURITY &&
+                read_queue_message_.from_destination.sub_destination.domain == UniversalMessage_Domain_DOMAIN_VEHICLE_SECURITY)
+            {
+              ESP_LOGI(TAG, "[%s] Received signed success, command completed", current_command.execute_name.c_str());
+              command_queue_.pop();
+              return;
+            }
+          }
         }
         return;
       }
