@@ -614,19 +614,26 @@ namespace esphome
         }
         else
         {
-          ESP_LOGI(TAG, "Received success message from domain %s", domain_to_string(read_queue_message_.from_destination.sub_destination.domain));
-          // A signed SUCCESS from VCSEC means the car accepted the command — complete it immediately
-          // rather than waiting for MAX_LATENCY to expire as a timeout.
+          ESP_LOGI(TAG, "Received success message from domain %s (from_tag=%d)", domain_to_string(read_queue_message_.from_destination.sub_destination.domain), read_queue_message_.from_destination.which_sub_destination);
+          // A signed SUCCESS from VCSEC means the car accepted the command — complete it immediately.
+          // closureMove responses use routing_address_tag in from_destination rather than domain_tag,
+          // so we accept either as a valid VCSEC acknowledgment.
           if (!command_queue_.empty())
           {
             BLECommand current_command = command_queue_.front();
             if (current_command.state == BLECommandState::WAITING_FOR_RESPONSE &&
-                current_command.domain == UniversalMessage_Domain_DOMAIN_VEHICLE_SECURITY &&
-                read_queue_message_.from_destination.sub_destination.domain == UniversalMessage_Domain_DOMAIN_VEHICLE_SECURITY)
+                current_command.domain == UniversalMessage_Domain_DOMAIN_VEHICLE_SECURITY)
             {
-              ESP_LOGI(TAG, "[%s] Received signed success, command completed", current_command.execute_name.c_str());
-              command_queue_.pop();
-              return;
+              bool from_vcsec =
+                (read_queue_message_.from_destination.which_sub_destination == UniversalMessage_Destination_domain_tag &&
+                 read_queue_message_.from_destination.sub_destination.domain == UniversalMessage_Domain_DOMAIN_VEHICLE_SECURITY) ||
+                (read_queue_message_.from_destination.which_sub_destination == UniversalMessage_Destination_routing_address_tag);
+              if (from_vcsec)
+              {
+                ESP_LOGI(TAG, "[%s] Received signed success, command completed", current_command.execute_name.c_str());
+                command_queue_.pop();
+                return;
+              }
             }
           }
         }
