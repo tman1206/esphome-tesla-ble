@@ -556,7 +556,7 @@ namespace esphome
       {
       case UniversalMessage_Destination_domain_tag:
       {
-        ESP_LOGD(TAG, "[%s] Dropping message to %s", request_uuid_hex, domain_to_string(read_queue_message_.from_destination.sub_destination.domain));
+        ESP_LOGI(TAG, "[%s] Dropping message to domain %s (from_tag=%d, payload=%d)", request_uuid_hex, domain_to_string(read_queue_message_.to_destination.sub_destination.domain), read_queue_message_.from_destination.which_sub_destination, read_queue_message_.which_payload);
         return;
       }
       case UniversalMessage_Destination_routing_address_tag:
@@ -663,7 +663,7 @@ namespace esphome
             ESP_LOGE(TAG, "Failed to parse incoming message");
             return;
           }
-          ESP_LOGD(TAG, "Parsed VCSEC message, which_sub_message = %i", vcsec_message.which_sub_message);
+          ESP_LOGI(TAG, "Parsed VCSEC message, which_sub_message = %i", vcsec_message.which_sub_message);
 
           switch (vcsec_message.which_sub_message)
           {
