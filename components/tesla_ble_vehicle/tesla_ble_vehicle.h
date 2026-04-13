@@ -213,6 +213,10 @@ namespace esphome
             IsFrunkOpen,
             IsClimateOn,
             WindowsState,
+            IsFrontDriverDoorOpen,
+            IsFrontPassengerDoorOpen,
+            IsRearDriverDoorOpen,
+            IsRearPassengerDoorOpen,
             Count
         };
         enum class TextSensorId : uint8_t {
@@ -344,6 +348,16 @@ namespace esphome
             inline bool binary_sensor_has_state (BinarySensorId id) const {
                 auto* s = binary_sensors_[static_cast<size_t>(id)];
                 return s && s->has_state();
+            }
+            // Returns true if the sensor was included in the YAML config (non-null).
+            inline bool has_binary_sensor (BinarySensorId id) const {
+                return binary_sensors_[static_cast<size_t>(id)] != nullptr;
+            }
+            inline bool has_text_sensor (TextSensorId id) const {
+                return text_sensors_[static_cast<size_t>(id)] != nullptr;
+            }
+            inline bool has_numeric_sensor (NumericSensorId id) const {
+                return numeric_sensors_[static_cast<size_t>(id)] != nullptr;
             }
 
             inline void publishSensor (BinarySensorId id, bool value) {

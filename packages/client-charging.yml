@@ -2,14 +2,20 @@
 # Requires: client-core.yml
 #
 # Provides:
-#   Sensors: charge_state, charge_current, charge_voltage, charge_power,
-#            charge_energy_added, charge_distance_added, max_soc, max_amps,
-#            mins_to_limit, battery_range, charging_state, charge_port_latch_state,
+#   Sensors: is_charge_flap_open (VCSEC), charge_state, charge_current,
+#            charge_voltage, charge_power, charge_energy_added,
+#            charge_distance_added, max_soc, max_amps, mins_to_limit,
+#            battery_range, charging_state, charge_port_latch_state,
 #            charger_phases, charge_rate
+#   Cover:   cov_charge_port
+#   Button:  btn_unlock_charge_port
 #   Switch:  sw_charger
 #   Numbers: charging_amps, charging_limit
 
 tesla_ble_vehicle:
+  is_charge_flap_open:
+    id: "is_charge_flap_open"
+    name: "Charge flap"
   charge_state:
     id: "charge_state"
     name: "Charge level"
@@ -120,3 +126,29 @@ number:
         return id(max_soc).state;
       }
       else return (0);
+
+cover:
+  - platform: template
+    id: cov_charge_port
+    name: "Charge port"
+    optimistic: true
+    device_class: door
+    icon: mdi:ev-plug-ccs2
+    lambda: |-
+      if (id(is_charge_flap_open).state) {
+        return COVER_OPEN;
+      } else {
+        return COVER_CLOSED;
+      }
+    open_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_OPEN_CHARGE_PORT_DOOR,1);
+    close_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CLOSE_CHARGE_PORT_DOOR,1);
+
+button:
+  - platform: template
+    id: btn_unlock_charge_port
+    name: Unlock charge port
+    icon: mdi:ev-plug-ccs2
+    on_press:
+      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_chargePort_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);

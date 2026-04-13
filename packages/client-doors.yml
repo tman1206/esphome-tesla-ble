@@ -1,25 +1,41 @@
-# Door, frunk, boot, and charge-port sensors and controls.
+# Door and trunk sensors and controls.
 # Requires: client-core.yml
 #
 # Provides:
-#   Sensors:  is_boot_open, is_frunk_open, is_charge_flap_open, is_unlocked
+#   Sensors:  is_unlocked, is_boot_open, is_frunk_open,
+#             is_front_driver_door_open, is_front_passenger_door_open,
+#             is_rear_driver_door_open, is_rear_passenger_door_open
+#             (all from VCSEC — sleep-safe, no infotainment needed)
 #   Lock:     lock_car
-#   Covers:   cov_boot, cov_frunk, cov_charge_port
-#   Buttons:  btn_unlatch_driver_door, btn_unlock_charge_port
+#   Covers:   cov_front_driver_door, cov_front_passenger_door,
+#             cov_rear_driver_door, cov_rear_passenger_door,
+#             cov_boot, cov_frunk
+#   Buttons:  btn_unlatch_driver_door
+#   Note:     charge flap sensor, charge port cover, and unlock charge port
+#             button are in client-charging.yml
 
 tesla_ble_vehicle:
   is_unlocked:
     id: "is_unlocked"
     name: "Doors"
-  is_charge_flap_open:
-    id: "is_charge_flap_open"
-    name: "Charge flap"
   is_boot_open:
     id: "is_boot_open"
     name: "Boot"
   is_frunk_open:
     id: "is_frunk_open"
     name: "Frunk"
+  is_front_driver_door_open:
+    id: "is_front_driver_door_open"
+    name: "Front driver door"
+  is_front_passenger_door_open:
+    id: "is_front_passenger_door_open"
+    name: "Front passenger door"
+  is_rear_driver_door_open:
+    id: "is_rear_driver_door_open"
+    name: "Rear driver door"
+  is_rear_passenger_door_open:
+    id: "is_rear_passenger_door_open"
+    name: "Rear passenger door"
 
 lock:
   - platform: template
@@ -41,6 +57,74 @@ lock:
           id(tesla_ble_vehicle_id)->lockVehicle(VCSEC_RKEAction_E_RKE_ACTION_LOCK);
 
 cover:
+  - platform: template
+    id: cov_front_driver_door
+    name: "Front driver door"
+    optimistic: true
+    device_class: door
+    icon: mdi:car-door
+    lambda: |-
+      if (id(is_front_driver_door_open).state) {
+        return COVER_OPEN;
+      } else {
+        return COVER_CLOSED;
+      }
+    open_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage(VCSEC_ClosureMoveRequest_frontDriverDoor_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
+    close_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage(VCSEC_ClosureMoveRequest_frontDriverDoor_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_CLOSE);
+
+  - platform: template
+    id: cov_front_passenger_door
+    name: "Front passenger door"
+    optimistic: true
+    device_class: door
+    icon: mdi:car-door
+    lambda: |-
+      if (id(is_front_passenger_door_open).state) {
+        return COVER_OPEN;
+      } else {
+        return COVER_CLOSED;
+      }
+    open_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage(VCSEC_ClosureMoveRequest_frontPassengerDoor_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
+    close_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage(VCSEC_ClosureMoveRequest_frontPassengerDoor_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_CLOSE);
+
+  - platform: template
+    id: cov_rear_driver_door
+    name: "Rear driver door"
+    optimistic: true
+    device_class: door
+    icon: mdi:car-door
+    lambda: |-
+      if (id(is_rear_driver_door_open).state) {
+        return COVER_OPEN;
+      } else {
+        return COVER_CLOSED;
+      }
+    open_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage(VCSEC_ClosureMoveRequest_rearDriverDoor_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
+    close_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage(VCSEC_ClosureMoveRequest_rearDriverDoor_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_CLOSE);
+
+  - platform: template
+    id: cov_rear_passenger_door
+    name: "Rear passenger door"
+    optimistic: true
+    device_class: door
+    icon: mdi:car-door
+    lambda: |-
+      if (id(is_rear_passenger_door_open).state) {
+        return COVER_OPEN;
+      } else {
+        return COVER_CLOSED;
+      }
+    open_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage(VCSEC_ClosureMoveRequest_rearPassengerDoor_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
+    close_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage(VCSEC_ClosureMoveRequest_rearPassengerDoor_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_CLOSE);
+
   - platform: template
     id: cov_boot
     name: "Boot"
@@ -73,23 +157,6 @@ cover:
     open_action:
       - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_frontTrunk_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
 
-  - platform: template
-    id: cov_charge_port
-    name: "Charge port"
-    optimistic: true
-    device_class: door
-    icon: mdi:ev-plug-ccs2
-    lambda: |-
-      if (id(is_charge_flap_open).state) {
-        return COVER_OPEN;
-      } else {
-        return COVER_CLOSED;
-      }
-    open_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_OPEN_CHARGE_PORT_DOOR,1);
-    close_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CLOSE_CHARGE_PORT_DOOR,1);
-
 button:
   - platform: template
     id: btn_unlatch_driver_door
@@ -98,10 +165,3 @@ button:
     on_press:
       - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_frontDriverDoor_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
     disabled_by_default: true
-
-  - platform: template
-    id: btn_unlock_charge_port
-    name: Unlock charge port
-    icon: mdi:ev-plug-ccs2
-    on_press:
-      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_chargePort_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);

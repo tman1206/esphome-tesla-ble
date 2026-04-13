@@ -1110,15 +1110,24 @@ if (ble_disconnected_ != BleConnected) // While disconnected update duration of 
           // Start retrieval of data from car. Each data type has its own frequency.
           last_infotainment_poll_time_ = millis();
           if ((number_updates_since_connection_ % get_action_detail(BLE_CarServer_VehicleAction::GET_CHARGE_STATE).numberUpdatesBetweenGets) == 0)
+            if (has_numeric_sensor(NumericSensorId::ChargeState) || has_numeric_sensor(NumericSensorId::ChargeCurrent) ||
+                has_numeric_sensor(NumericSensorId::BatteryRange) || has_text_sensor(TextSensorId::ChargingState))
               sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_CHARGE_STATE, 0);
           if ((number_updates_since_connection_ % get_action_detail(BLE_CarServer_VehicleAction::GET_DRIVE_STATE).numberUpdatesBetweenGets) == 0)
-            sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_DRIVE_STATE, 0);
+            if (has_numeric_sensor(NumericSensorId::Odometer) || has_text_sensor(TextSensorId::ShiftState))
+              sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_DRIVE_STATE, 0);
           if ((number_updates_since_connection_ % get_action_detail(BLE_CarServer_VehicleAction::GET_CLIMATE_STATE).numberUpdatesBetweenGets) == 0)
-            sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_CLIMATE_STATE, 0);
+            if (has_binary_sensor(BinarySensorId::IsClimateOn) || has_numeric_sensor(NumericSensorId::InternalTemp) ||
+                has_text_sensor(TextSensorId::DefrostState) || has_binary_sensor(BinarySensorId::WindowsState))
+              sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_CLIMATE_STATE, 0);
           if ((number_updates_since_connection_ % get_action_detail(BLE_CarServer_VehicleAction::GET_CLOSURES_STATE).numberUpdatesBetweenGets) == 0)
-            sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_CLOSURES_STATE, 0);
+            if (has_binary_sensor(BinarySensorId::IsChargeFlapOpen) || has_binary_sensor(BinarySensorId::IsBootOpen) ||
+                has_binary_sensor(BinarySensorId::IsFrunkOpen))
+              sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_CLOSURES_STATE, 0);
           if ((number_updates_since_connection_ % get_action_detail(BLE_CarServer_VehicleAction::GET_TYRES_STATE).numberUpdatesBetweenGets) == 0)
-            sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_TYRES_STATE, 0);
+            if (has_numeric_sensor(NumericSensorId::TpmsFl) || has_numeric_sensor(NumericSensorId::TpmsFr) ||
+                has_numeric_sensor(NumericSensorId::TpmsRl) || has_numeric_sensor(NumericSensorId::TpmsRr))
+              sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_TYRES_STATE, 0);
           if ((car_just_woken_ != 0) and ((millis() - car_wake_time_) > post_wake_poll_time_))
           {
             car_just_woken_ = 0;
@@ -2151,6 +2160,17 @@ if (ble_disconnected_ != BleConnected) // While disconnected update duration of 
           default:
             break;
           } // switch chargePort
+
+          auto publish_door = [this](BinarySensorId id, VCSEC_ClosureState_E state) {
+            if (state == VCSEC_ClosureState_E_CLOSURESTATE_OPEN)
+              publishSensor(id, true);
+            else if (state == VCSEC_ClosureState_E_CLOSURESTATE_CLOSED)
+              publishSensor(id, false);
+          };
+          publish_door(BinarySensorId::IsFrontDriverDoorOpen,    vehicleStatus.closureStatuses.frontDriverDoor);
+          publish_door(BinarySensorId::IsFrontPassengerDoorOpen, vehicleStatus.closureStatuses.frontPassengerDoor);
+          publish_door(BinarySensorId::IsRearDriverDoorOpen,     vehicleStatus.closureStatuses.rearDriverDoor);
+          publish_door(BinarySensorId::IsRearPassengerDoorOpen,  vehicleStatus.closureStatuses.rearPassengerDoor);
         }
         else
         {
