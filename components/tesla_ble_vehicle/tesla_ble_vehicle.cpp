@@ -556,7 +556,7 @@ namespace esphome
       {
       case UniversalMessage_Destination_domain_tag:
       {
-        ESP_LOGI(TAG, "[%s] Dropping message to domain %s (from_tag=%d, payload=%d)", request_uuid_hex, domain_to_string(read_queue_message_.to_destination.sub_destination.domain), read_queue_message_.from_destination.which_sub_destination, read_queue_message_.which_payload);
+        ESP_LOGD(TAG, "[%s] Dropping message to domain %s", request_uuid_hex, domain_to_string(read_queue_message_.to_destination.sub_destination.domain));
         return;
       }
       case UniversalMessage_Destination_routing_address_tag:
@@ -614,7 +614,7 @@ namespace esphome
         }
         else
         {
-          ESP_LOGI(TAG, "Received success message from domain %s (from_tag=%d)", domain_to_string(read_queue_message_.from_destination.sub_destination.domain), read_queue_message_.from_destination.which_sub_destination);
+          ESP_LOGD(TAG, "Received success message from domain %s", domain_to_string(read_queue_message_.from_destination.sub_destination.domain));
           // A signed SUCCESS from VCSEC means the car accepted the command — complete it immediately.
           // closureMove responses use routing_address_tag in from_destination rather than domain_tag,
           // so we accept either as a valid VCSEC acknowledgment.
@@ -663,7 +663,7 @@ namespace esphome
             ESP_LOGE(TAG, "Failed to parse incoming message");
             return;
           }
-          ESP_LOGI(TAG, "Parsed VCSEC message, which_sub_message = %i", vcsec_message.which_sub_message);
+          ESP_LOGD(TAG, "Parsed VCSEC message, which_sub_message = %i", vcsec_message.which_sub_message);
 
           switch (vcsec_message.which_sub_message)
           {
@@ -803,6 +803,19 @@ namespace esphome
           }
           default:
           {
+            // which_sub_message == 0 means the car sent an empty VCSEC message with no sub_message
+            // field set — Tesla uses this as an implicit bare ACK for closureMove commands.
+            if (vcsec_message.which_sub_message == 0 && !command_queue_.empty())
+            {
+              BLECommand current_command = command_queue_.front();
+              if (current_command.domain == UniversalMessage_Domain_DOMAIN_VEHICLE_SECURITY &&
+                  current_command.state == BLECommandState::WAITING_FOR_RESPONSE)
+              {
+                ESP_LOGI(TAG, "[%s] Received empty VCSEC ACK, command completed", current_command.execute_name.c_str());
+                command_queue_.pop();
+                return;
+              }
+            }
             // probably information request with public key
             VCSEC_InformationRequest info_message = VCSEC_InformationRequest_init_default;
             int return_code = tesla_ble_client_->parseVCSECInformationRequest(&read_queue_message_.payload.protobuf_message_as_bytes, &info_message);
