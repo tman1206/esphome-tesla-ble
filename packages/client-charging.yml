@@ -1,0 +1,122 @@
+# Charging sensors and controls.
+# Requires: client-core.yml
+#
+# Provides:
+#   Sensors: charge_state, charge_current, charge_voltage, charge_power,
+#            charge_energy_added, charge_distance_added, max_soc, max_amps,
+#            mins_to_limit, battery_range, charging_state, charge_port_latch_state,
+#            charger_phases, charge_rate
+#   Switch:  sw_charger
+#   Numbers: charging_amps, charging_limit
+
+tesla_ble_vehicle:
+  charge_state:
+    id: "charge_state"
+    name: "Charge level"
+  charge_current:
+    id: "charge_current"
+    name: "Charge current"
+  charge_voltage:
+    id: "charge_voltage"
+    name: "Charge voltage"
+  charge_power:
+    id: "charge_power"
+    name: "Charge power"
+  charge_energy_added:
+    id: "charge_energy_added"
+    name: "Charge energy added"
+  charge_distance_added:
+    id: "charge_distance_added"
+    name: "Charge distance added"
+  max_soc:
+    id: "max_soc"
+    name: "Charge limit"
+  max_amps:
+    id: "max_amps"
+    name: "Current limit"
+  mins_to_limit:
+    id: "mins_to_limit"
+    name: "Minutes to limit"
+  battery_range:
+    id: "battery_range"
+    name: "Range"
+  charging_state:
+    id: "charging_state"
+    name: "Charging state"
+  charge_port_latch_state:
+    id: "charge_port_latch_state"
+    name: "Charge port latch state"
+    disabled_by_default: true
+  charger_phases:
+    id: "charger_phases"
+    name: "Charger phases"
+    disabled_by_default: true
+    filters:
+      - lambda: |-
+          if (x == 2)
+            return 3;
+          return x;
+  charge_rate:
+    id: "charge_rate"
+    name: "Charge rate"
+    disabled_by_default: true
+
+switch:
+  - platform: template
+    id: sw_charger
+    name: "Charger"
+    optimistic: true
+    icon: mdi:lightning-bolt
+    lambda: |-
+      if ((id(charging_state).state == "Charging") or (id(charging_state).state == "Starting") or (id(charging_state).state == "Calibrating")) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CHARGING_SWITCH, 1);
+    turn_off_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CHARGING_SWITCH, 0);
+
+number:
+  - platform: template
+    name: "Charging amps"
+    id: charging_amps
+    icon: mdi:ev-station
+    unit_of_measurement: "A"
+    mode: slider
+    update_interval: 2s
+    min_value: 0
+    max_value: $charging_amps_max
+    step: 1
+    set_action:
+      - lambda: |-
+          int var_x = static_cast<int>(x);
+          id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CHARGING_AMPS, var_x);
+    lambda: |-
+      if (id(max_amps).has_state())
+      {
+        return id(max_amps).state;
+      }
+      else return (0);
+
+  - platform: template
+    name: "Charging limit"
+    id: charging_limit
+    icon: mdi:ev-station
+    unit_of_measurement: "%"
+    mode: slider
+    update_interval: 2s
+    min_value: 50
+    max_value: 100
+    step: 1
+    set_action:
+      - lambda: |-
+          int var_x = static_cast<int>(x);
+          id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CHARGING_LIMIT, var_x);
+    lambda: |-
+      if (id(max_soc).has_state())
+      {
+        return id(max_soc).state;
+      }
+      else return (0);

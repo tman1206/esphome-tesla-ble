@@ -1,0 +1,198 @@
+# Core BLE infrastructure — always required.
+# Provides: BLE connection, pairing, key management, polling config, diagnostic sensors.
+# No vehicle data sensors are defined here — add client-doors.yml, client-charging.yml,
+# client-climate.yml, and/or client-vehicle.yml as needed.
+
+substitutions:
+  ble_mac_address: !secret ble_mac_address
+  tesla_vin: !secret tesla_vin
+  charging_amps_max: "32"
+
+ble_client:
+  - mac_address: $ble_mac_address
+    id: ble_tesla_id
+
+tesla_ble_vehicle:
+  ble_client_id: ble_tesla_id
+  id: tesla_ble_vehicle_id
+  vin: $tesla_vin
+  update_interval: 10s
+  post_wake_poll_time: 300
+  poll_data_period: 60
+  poll_asleep_period: 60
+  poll_charging_period: 10
+  ble_disconnected_min_time: 300
+  fast_poll_if_unlocked: 0
+  wake_on_boot: 0
+
+  last_update:
+    id: "last_update"
+    name: "Last update"
+  ble_disconnected_time:
+    id: "ble_disconnected_time"
+    name: "BLE disconnected time"
+    disabled_by_default: true
+    entity_category: diagnostic
+
+button:
+  - platform: template
+    id: ble_pair
+    name: Pair BLE key
+    icon: mdi:key-wireless
+    on_press:
+      - lambda: id(tesla_ble_vehicle_id)->startPair();
+    entity_category: diagnostic
+
+  - platform: template
+    id: btn_regenerate_key
+    name: Regenerate key
+    icon: mdi:key-change
+    on_press:
+      - lambda: id(tesla_ble_vehicle_id)->regenerateKey();
+    entity_category: diagnostic
+    disabled_by_default: true
+
+  - platform: template
+    id: btn_force_data_update
+    name: Force data update
+    icon: mdi:database-sync
+    on_press:
+      - lambda: id(tesla_ble_vehicle_id)->enqueueVCSECInformationRequest(true);
+    entity_category: diagnostic
+
+sensor:
+  - platform: ble_client
+    type: rssi
+    id: ble_signal
+    ble_client_id: ble_tesla_id
+    name: "BLE Signal"
+    icon: mdi:bluetooth
+    update_interval: 60s
+    entity_category: diagnostic
+
+switch:
+  - platform: ble_client
+    id: sw_ble_connection
+    ble_client_id: ble_tesla_id
+    name: "BLE Connection"
+    entity_category: diagnostic
+
+  - platform: template
+    id: fast_poll_if_unlocked
+    name: "Fast poll if unlocked"
+    optimistic: true
+    icon: mdi:car-door-lock-open
+    entity_category: config
+    restore_mode: RESTORE_DEFAULT_OFF
+    disabled_by_default: true
+    on_state:
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lambda: id(tesla_ble_vehicle_id)->fast_poll_if_unlocked_ = 1;
+          else:
+            - lambda: id(tesla_ble_vehicle_id)->fast_poll_if_unlocked_ = 0;
+
+  - platform: template
+    id: wake_on_boot
+    name: "Wake on boot"
+    optimistic: true
+    icon: mdi:sleep-off
+    entity_category: config
+    restore_mode: RESTORE_DEFAULT_OFF
+    disabled_by_default: true
+    on_state:
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lambda: id(tesla_ble_vehicle_id)->wake_on_boot_ = 1;
+          else:
+            - lambda: id(tesla_ble_vehicle_id)->wake_on_boot_ = 0;
+
+number:
+  - platform: template
+    id: post_wake_poll_time
+    name: "Post wake poll time"
+    icon: mdi:timelapse
+    min_value: 0
+    max_value: 1000
+    mode: box
+    step: 1
+    restore_value: true
+    initial_value: 300
+    optimistic: true
+    disabled_by_default: true
+    entity_category: config
+    on_value:
+      - lambda: |-
+          id(tesla_ble_vehicle_id)->post_wake_poll_time_ = x * 1000;
+
+  - platform: template
+    id: poll_data_period
+    name: "Poll data period"
+    icon: mdi:timer-outline
+    min_value: 0
+    max_value: 1000
+    mode: box
+    step: 1
+    restore_value: true
+    initial_value: 60
+    optimistic: true
+    disabled_by_default: true
+    entity_category: config
+    on_value:
+      - lambda: |-
+          id(tesla_ble_vehicle_id)->poll_data_period_ = x * 1000;
+
+  - platform: template
+    id: poll_asleep_period
+    name: "Poll asleep period"
+    icon: mdi:bed-clock
+    min_value: 0
+    max_value: 1000
+    mode: box
+    step: 1
+    restore_value: true
+    initial_value: 60
+    optimistic: true
+    disabled_by_default: true
+    entity_category: config
+    on_value:
+      - lambda: |-
+          id(tesla_ble_vehicle_id)->poll_asleep_period_ = x * 1000;
+
+  - platform: template
+    id: poll_charging_period
+    name: "Poll charging period"
+    icon: mdi:timer-sync-outline
+    min_value: 0
+    max_value: 1000
+    mode: box
+    step: 1
+    restore_value: true
+    initial_value: 10
+    optimistic: true
+    disabled_by_default: true
+    entity_category: config
+    on_value:
+      - lambda: |-
+          id(tesla_ble_vehicle_id)->poll_charging_period_ = x * 1000;
+
+  - platform: template
+    id: ble_disconnected_min_time
+    name: "BLE disconnected min time"
+    icon: mdi:bluetooth-connect
+    min_value: 0
+    max_value: 1000
+    mode: box
+    step: 1
+    restore_value: true
+    initial_value: 300
+    optimistic: true
+    disabled_by_default: true
+    entity_category: config
+    on_value:
+      - lambda: |-
+          id(tesla_ble_vehicle_id)->ble_disconnected_min_time_ = x * 1000;

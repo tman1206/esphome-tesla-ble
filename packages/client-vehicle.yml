@@ -1,0 +1,75 @@
+# Vehicle presence, state, and convenience controls.
+# Requires: client-core.yml
+#
+# Provides:
+#   Sensors: is_asleep, is_user_present, shift_state, odometer,
+#            tpms_pressure_fl/fr/rl/rr
+#   Buttons: btn_wake_up, btn_flash_light, btn_sound_horn
+#   Switch:  sw_sentry_mode
+
+tesla_ble_vehicle:
+  is_asleep:
+    id: "is_asleep"
+    name: "Asleep"
+  is_user_present:
+    id: "is_user_present"
+    name: "User presence"
+  shift_state:
+    id: "shift_state"
+    name: "Shift state"
+  odometer:
+    id: "odometer"
+    name: "Odometer"
+    filters:
+      - multiply: 0.01 # Odometer is in hundredths of a mile (can use this to convert to km)
+  tpms_pressure_fl:
+    id: "tpms_pressure_fl"
+    name: "Tyre pressure front left"
+    disabled_by_default: true
+  tpms_pressure_fr:
+    id: "tpms_pressure_fr"
+    name: "Tyre pressure front right"
+    disabled_by_default: true
+  tpms_pressure_rl:
+    id: "tpms_pressure_rl"
+    name: "Tyre pressure rear left"
+    disabled_by_default: true
+  tpms_pressure_rr:
+    id: "tpms_pressure_rr"
+    name: "Tyre pressure rear right"
+    disabled_by_default: true
+
+button:
+  - platform: template
+    id: btn_wake_up
+    name: Wake up
+    icon: mdi:sleep-off
+    on_press:
+      - lambda: id(tesla_ble_vehicle_id)->wakeVehicle();
+
+  - platform: template
+    id: btn_flash_light
+    name: Flash light
+    icon: mdi:car-light-high
+    on_press:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::FLASH_LIGHT, 0);
+
+  - platform: template
+    id: btn_sound_horn
+    name: Sound horn
+    icon: mdi:bugle
+    on_press:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::SOUND_HORN, 0);
+
+switch:
+  - platform: template
+    id: sw_sentry_mode
+    name: "Sentry mode"
+    optimistic: true
+    icon: mdi:record-circle-outline
+    assumed_state: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_SENTRY_SWITCH, 1);
+    turn_off_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_SENTRY_SWITCH, 0);

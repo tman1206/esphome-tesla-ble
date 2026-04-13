@@ -1,0 +1,107 @@
+# Door, frunk, boot, and charge-port sensors and controls.
+# Requires: client-core.yml
+#
+# Provides:
+#   Sensors:  is_boot_open, is_frunk_open, is_charge_flap_open, is_unlocked
+#   Lock:     lock_car
+#   Covers:   cov_boot, cov_frunk, cov_charge_port
+#   Buttons:  btn_unlatch_driver_door, btn_unlock_charge_port
+
+tesla_ble_vehicle:
+  is_unlocked:
+    id: "is_unlocked"
+    name: "Doors"
+  is_charge_flap_open:
+    id: "is_charge_flap_open"
+    name: "Charge flap"
+  is_boot_open:
+    id: "is_boot_open"
+    name: "Boot"
+  is_frunk_open:
+    id: "is_frunk_open"
+    name: "Frunk"
+
+lock:
+  - platform: template
+    id: lock_car
+    name: "Lock car"
+    optimistic: true
+    icon: mdi:lock
+    lambda: |-
+      if (id(is_unlocked).state) {
+          return LOCK_STATE_UNLOCKED;
+        } else {
+          return LOCK_STATE_LOCKED;
+        }
+    unlock_action:
+      - lambda: |-
+          id(tesla_ble_vehicle_id)->lockVehicle(VCSEC_RKEAction_E_RKE_ACTION_UNLOCK);
+    lock_action:
+      - lambda: |-
+          id(tesla_ble_vehicle_id)->lockVehicle(VCSEC_RKEAction_E_RKE_ACTION_LOCK);
+
+cover:
+  - platform: template
+    id: cov_boot
+    name: "Boot"
+    optimistic: true
+    device_class: door
+    icon: mdi:car-back
+    lambda: |-
+      if (id(is_boot_open).state) {
+        return COVER_OPEN;
+      } else {
+        return COVER_CLOSED;
+      }
+    open_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_rearTrunk_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
+    close_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_rearTrunk_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_CLOSE);
+
+  - platform: template
+    id: cov_frunk
+    name: "Frunk"
+    optimistic: true
+    device_class: door
+    icon: mdi:car
+    lambda: |-
+      if (id(is_frunk_open).state) {
+        return COVER_OPEN;
+      } else {
+        return COVER_CLOSED;
+      }
+    open_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_frontTrunk_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
+
+  - platform: template
+    id: cov_charge_port
+    name: "Charge port"
+    optimistic: true
+    device_class: door
+    icon: mdi:ev-plug-ccs2
+    lambda: |-
+      if (id(is_charge_flap_open).state) {
+        return COVER_OPEN;
+      } else {
+        return COVER_CLOSED;
+      }
+    open_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_OPEN_CHARGE_PORT_DOOR,1);
+    close_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CLOSE_CHARGE_PORT_DOOR,1);
+
+button:
+  - platform: template
+    id: btn_unlatch_driver_door
+    name: Unlatch driver door
+    icon: mdi:car-door
+    on_press:
+      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_frontDriverDoor_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
+    disabled_by_default: true
+
+  - platform: template
+    id: btn_unlock_charge_port
+    name: Unlock charge port
+    icon: mdi:ev-plug-ccs2
+    on_press:
+      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_chargePort_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);

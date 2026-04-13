@@ -1,0 +1,90 @@
+# Climate, HVAC, and windows sensors and controls.
+# Requires: client-core.yml
+#
+# Provides:
+#   Sensors: is_climate_on, internal_temp, external_temp, defrost_state, windows_state
+#   Switches: sw_climate, sw_steering_wheel_heat, sw_defrost_car
+#   Cover:   cov_vent (windows)
+
+tesla_ble_vehicle:
+  is_climate_on:
+    id: "is_climate_on"
+    name: "Climate"
+  internal_temp:
+    id: "internal_temp"
+    name: "Interior"
+  external_temp:
+    id: "external_temp"
+    name: "Exterior"
+  defrost_state:
+    id: "defrost_state"
+    name: "Defrost state"
+  windows_state:
+    id: "windows_state"
+    name: "Windows"
+
+switch:
+  - platform: template
+    id: sw_climate
+    name: "Climate"
+    optimistic: true
+    icon: mdi:fan
+    lambda: |-
+      if (id(is_climate_on).state) {
+        return true;
+      } else {
+        return false;
+      }
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_HVAC_SWITCH, 1);
+    turn_off_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_HVAC_SWITCH, 0);
+
+  - platform: template
+    id: sw_steering_wheel_heat
+    name: "Steering wheel heat"
+    optimistic: true
+    icon: mdi:steering
+    assumed_state: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_HVAC_STEERING_HEATER_SWITCH, 1);
+    turn_off_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_HVAC_STEERING_HEATER_SWITCH, 0);
+
+  - platform: template
+    id: sw_defrost_car
+    name: Defrost car
+    optimistic: true
+    icon: mdi:snowflake-melt
+    lambda: |-
+      if (id(defrost_state).state != "Off") {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEFROST_CAR, 1);
+    turn_off_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEFROST_CAR, 0);
+
+cover:
+  - platform: template
+    id: cov_vent
+    name: "Vent"
+    optimistic: false
+    icon: mdi:car-door
+    device_class: door
+    lambda: |-
+      if (id(windows_state).state) {
+        return COVER_OPEN;
+      } else {
+        return COVER_CLOSED;
+      }
+    close_action:
+      - lambda: |-
+          id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_WINDOWS_SWITCH, 0);
+    open_action:
+      - lambda: |-
+          id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_WINDOWS_SWITCH, 1);

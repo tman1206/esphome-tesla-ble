@@ -34,7 +34,19 @@ packages:
   remote_package_files:
     url: https://github.com/PedroKTFC/esphome-tesla-ble/
     path: packages
-    files: [base.yml, common.yml, project.yml, client.yml]
+    # Choose which feature groups to include.  client-core.yml is always required.
+    # Add only the groups you need — great for keeping things lean when you have
+    # another integration (e.g. Tessie) that already covers most vehicle data.
+    #
+    #   client-core.yml     — BLE connection, pairing, polling config (always required)
+    #   client-doors.yml    — door/frunk/boot/charge-port sensors + lock/cover controls
+    #   client-charging.yml — charging sensors + charger switch + amp/limit sliders
+    #   client-climate.yml  — HVAC, defrost, windows
+    #   client-vehicle.yml  — sleep/presence/odometer/TPMS + wake/horn/sentry
+    #
+    # Or use client.yml to include everything (original behaviour, backward-compatible):
+    files: [base.yml, common.yml, project.yml, client-core.yml, client-doors.yml]
+    # files: [base.yml, common.yml, project.yml, client.yml]  # all entities
   # listener: github://PedroKTFC/esphome-tesla-ble/packages/listener.yml # Uncomment this to scan find your VIN BLE MAC address
   # language: github://PedroKTFC/esphome-tesla-ble/packages/language_hu.yml # Uncomment this to translate the entity names to your language. If yours is missing, submit a PR here!
   # language: github://PedroKTFC/esphome-tesla-ble/packages/language_de.yml # Uncomment this to translate the entity names to your language. If yours is missing, submit a PR here!
